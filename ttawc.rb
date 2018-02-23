@@ -32,7 +32,7 @@ if RUBY_VERSION < '2.4' then
 	STDERR.puts '[Warning] You are running an old version of Ruby. Parsing files with non-english characters (Accents, Umlauts, Chinese characters, ...) might not produce useful results when not using --raw'
 	$inputalphabet = /[^A-Za-zöäüß]/ #[:word:] for word characters does not work in old Ruby versions, use english alphabet + german umlauts as a fallback
 else
-	$inputalphabet = /[^[:word:]]/ # discard all non-word character
+	$inputalphabet = /[^[:word:]]/ # discard all non-word characters
 end
 
 version = '1.3.2'
@@ -46,6 +46,7 @@ helptext = ['Usage:', 'ruby ttawc.rb [options] [dictionary] [input file]', 'If n
 			'--sort (-s) Sort output by count (desc)',
 			'--show-matching (-m) Show every word and the category it matches',
 			'--verbose (-d) Show debug information',
+			'--cachesize=NUM Set maximum number of words to keep in cache (default 10.000)',
 			'--version (-v) Show version and exit',
 			'--help (-h) Show this help and exit',
 			'--format Show input and dict format help',
@@ -79,6 +80,7 @@ $excluderules = false
 $excluderegex = nil
 $include = true
 $showmatching = false
+$maxcache = 10000 # Maximum number of cached words
 
 # Parse command line options
 ARGV.each do|a|
@@ -101,6 +103,8 @@ ARGV.each do|a|
 		$sort = true
 	elsif a == '-r' or a == '--raw' then
 		$sanitize = false
+	elsif a =~ /^--cachesize=/ then
+		$maxcache = a[12...a.length].to_i
 	elsif a == '-v' or a == '--version' then
 		puts 'tinyTAWC v'+version+' - Always sanity-check your results. Try --help for help.'
 		exit
@@ -168,7 +172,9 @@ end
 
 def count(text)
 	result = {}
-	words = ($sanitize ? text.gsub($inputalphabet, ' ') : text).gsub(/\s+/, ' ').split
+	cache = {}
+	cachehits = 0
+	words = ($sanitize ? text.gsub($inputalphabet, ' ').gsub(/[0-9]/, ' ') : text).gsub(/\s+/, ' ').split
 
 	log('Found ' + words.length.to_s + ' words')
 	log('Checking ' + numtohuman(words.length) + '*' + numtohuman($rulecount) + '=' + numtohuman(words.length * $rulecount) + ' rules, this may take a while')
@@ -179,9 +185,27 @@ def count(text)
 			next
 		end
 
+		# Remove one element from cache if cache is full
+		if cache.length >= $maxcache then
+			cache.shift
+		end
+
+		# Shortcut if word is in cache
+		if cache[word] then
+			cachehits += 1
+			# Increment every matching category
+			cache[word].each{|cat|
+				puts word + ' matches ' + cat if $showmatching
+				result[cat] = result[cat] ? result[cat]+1 : 1
+			}
+			next
+		end
+
 		# Test rules until a matching one is found
+		cache[word] = [] # Assume no rule matches the word and cache that. If a rule does match, the cache is overwritten
 		for rule in $regexes do
 			if word =~ rule[:regex] then
+				cache[word] = rule[:categories] # Save word categories in cache
 				# Increment every matching category
 				for category in rule[:categories] do
 					puts word + ' matches ' + category if $showmatching
@@ -204,6 +228,7 @@ def count(text)
 
 	result.push(['total', words.length])
 
+	log('Cached words: '+cachehits.to_s+'/'+words.length.to_s)
 	log('Done')
 	return result
 end
