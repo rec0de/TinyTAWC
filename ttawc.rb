@@ -1,6 +1,52 @@
 #!/usr/bin/env ruby
 
-$inputalphabet = /[^A-Za-zöäüß]/ # Regex used to discard non-matching characters
+def log(msg)
+	STDERR.puts '[Debug] ' + msg if $debug
+end
+
+# Regex used to discard non-matching characters
+if RUBY_VERSION < '2.4' then
+	STDERR.puts '[Warning] You are running an old version of Ruby. Parsing files with non-english characters (Accents, Umlauts, Chinese characters, ...) might not produce useful results when not using --raw'
+	$inputalphabet = /[^A-Za-zöäüß]/ #[:word:] for word characters does not work in old Ruby versions, use english alphabet + german umlauts as a fallback
+else
+	$inputalphabet = /[^[:word:]]/ # discard all non-word character
+end
+
+version = '1.3.2'
+helptext = ['Usage:', 'ruby ttawc.rb [options] [dictionary] [input file]', 'If no input file is given, input data is read from STDIN', '',
+			'Options:',
+			'--raw (-r) Use raw input data with no sanitizing',
+			'--include="cat0,cat1,..." Include only the given categories',
+			'--exclude=\"cat0,cat1,...\" Include everything except the given categories',
+			'--human Show human-readable output',
+			'--percent (-p) Show output in percent of total words',
+			'--sort (-s) Sort output by count (desc)',
+			'--show-matching (-m) Show every word and the category it matches',
+			'--verbose (-d) Show debug information',
+			'--version (-v) Show version and exit',
+			'--help (-h) Show this help and exit',
+			'--format Show input and dict format help',
+			''
+		]
+
+formattext = ['', 'tinyTAWC format help', '',
+			'INPUT DATA',
+			'In the default mode, the input file can be any plaintext file. Whitespace and linebreaks are ignored.',
+			'',
+			'DICT DATA',
+			'Dict file format should be compatible with LIWC dict format. Every line of the dict file specifies a case-insensitive word rule with * as a wildcard for arbitrary characters.',
+			'Alternatively, word rules can be specified as complete regular expressions (Ruby syntax, no whitespace, e.g. /wor(l)?d/ - modifiers like i, s or U can currently not be used).',
+			'Word rules are followed by the categories they belong to, separated by a single tab character (or other whitespace). Trailing whitespace is ignored.',
+			'Lines starting with a % are treated as single-line comments. Lines containing only a % start or end a multi-line comment block.',
+			'TinyTAWC searches for category maps within multi-line comment blocks. Category maps are expected to consist of the category code, followed by arbitrary whitespace, followed by the human-readable category name, containing no whitespace.',
+			'Note that only the first match for a word is counted. A dictionary containing the rules "word catA" and "word catB" will only count an occurence of \'word\' towards catA. Use "word catA catB" instead.',
+			'',
+			'OUTPUT DATA',
+			'If --human is passed as an argument, TinyTAWC outputs a header row explaining the column values and one row for each category that matched at least one word.',
+			'Row entries are separated by a single space character.',
+			'In the default machine-readable mode, TinyTAWC output has the format "cat0:count0 cat1:count1 ..." where catn is the n-th category code and countn is the wordcount or percentage matching this category.', ''
+		]
+
 $sanitize = true
 $debug = false
 $human = false
@@ -33,14 +79,13 @@ ARGV.each do|a|
 	elsif a == '-r' or a == '--raw' then
 		$sanitize = false
 	elsif a == '-v' or a == '--version' then
-		puts 'tinyTAWC v1.3.2 - Use at your own risk. Try --help for help.'
+		puts 'tinyTAWC v'+version+' - Always sanity-check your results. Try --help for help.'
 		exit
 	elsif a == '-h' or a == '--help' then
-		puts "\nUsage:\nruby ttawc.rb [options] [dictionary] [input file]\nIf no input file is given, input data is read from STDIN\n\n"
-		puts "Options:\n--raw (-r) Use raw input data with no sanitizing\n--include=\"cat0,cat1,...\" Include only the given categories\n--exclude=\"cat0,cat1,...\" Include everything except the given categories\n--human Show human-readable output\n--percent (-p) Show output in percent of total words\n--sort (-s) Sort output by count (desc)\n--show-matching (-m) Show every word and the category it matches\n--verbose (-d) Show debug information\n--version (-v) Show version and exit\n--help (-h) Show this help and exit\n--format Show input and dict format help\n\n"
+		helptext.each{|line| puts line}
 		exit
 	elsif a == '--format' then
-		puts "\ntinyTAWC format help\n\nINPUT DATA\nIn the default mode, the input file can be any plaintext file. Whitespace and linebreaks are ignored.\n\nDICT DATA\nDict file format should be compatible with LIWC dict format. Every line of the dict file specifies a case-insensitive word rule with * as a wildcard for arbitrary characters.\nAlternatively, word rules can be specified as complete regular expressions (Ruby syntax, no whitespace, e.g. /wor(l)?d/ - modifiers like i, s or U can currently not be used).\nWord rules are followed by the categories they belong to, separated by a single tab character (or other whitespace). Trailing whitespace is ignored.\nLines starting with a \% are treated as single-line comments. Lines containing only a \% start or end a multi-line comment block.\nTinyTAWC searches for category maps within multi-line comment blocks. Category maps are expected to consist of the category code, followed by arbitrary whitespace, followed by the human-readable category name, containing no whitespace.\nNote that only the first match for a word is counted. A dictionary containing the rules \"word catA\" and \"word catB\" will only count an occurence of 'word' towards catA. Use \"word catA catB\" instead.\n\nOUTPUT DATA\nIf --human is passed as an argument, TinyTAWC outputs a header row explaining the column values and one row for each category that matched at least one word. Row entries are separated by a single space character.\nIn the default machine-readable mode, TinyTAWC output has the format \"cat0:count0 cat1:count1 ...\" where catn is the n-th category code and countn is the wordcount or percentage matching this category.\n\n"
+		formattext.each{|line| puts line}
 		exit
 	elsif a[0] == '-' then
 		puts "Unknown option '"+a+"'"
@@ -88,10 +133,6 @@ def numtohuman(number)
 	else
 		return ((number/100000).round.to_f / 10).to_s + 'M'
 	end
-end
-
-def log(msg)
-	puts '[Debug]' + msg if $debug
 end
 
 def parseRegex(string)
