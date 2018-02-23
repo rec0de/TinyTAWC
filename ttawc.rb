@@ -35,7 +35,7 @@ else
 	$inputalphabet = Regex.new('[^[:word:]]') # discard all non-word characters
 end
 
-version = '1.3.2'
+version = '1.3.3'
 helptext = ['Usage:', 'ruby ttawc.rb [options] [dictionary] [input file]', 'If no input file is given, input data is read from STDIN', '',
 			'Options:',
 			'--raw (-r) Use raw input data with no sanitizing',
