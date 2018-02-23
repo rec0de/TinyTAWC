@@ -27,15 +27,7 @@ def log(msg)
 	STDERR.puts '[Debug] ' + msg if $debug
 end
 
-# Regex used to discard non-matching characters
-if RUBY_VERSION < '2.4' then
-	STDERR.puts '[Warning] You are running an old version of Ruby. Parsing files with non-english characters (Accents, Umlauts, Chinese characters, ...) might not produce useful results when not using --raw'
-	$inputalphabet = /[^A-Za-zöäüß]/ #[:word:] for word characters does not work in old Ruby versions, use english alphabet + german umlauts as a fallback
-else
-	$inputalphabet = Regex.new('[^[:word:]]') # discard all non-word characters
-end
-
-version = '1.3.3'
+version = '1.3.4'
 helptext = ['Usage:', 'ruby ttawc.rb [options] [dictionary] [input file]', 'If no input file is given, input data is read from STDIN', '',
 			'Options:',
 			'--raw (-r) Use raw input data with no sanitizing',
@@ -68,7 +60,8 @@ formattext = ['', 'tinyTAWC format help', '',
 			'OUTPUT DATA',
 			'If --human is passed as an argument, TinyTAWC outputs a header row explaining the column values and one row for each category that matched at least one word.',
 			'Row entries are separated by a single space character.',
-			'In the default machine-readable mode, TinyTAWC output has the format "cat0:count0 cat1:count1 ..." where catn is the n-th category code and countn is the wordcount or percentage matching this category.', ''
+			'In the default machine-readable mode, TinyTAWC output has the format "cat0:count0 cat1:count1 ..." where catn is the n-th category code and countn is the wordcount or percentage matching this category.',
+			'Output data is sorted alphabetically by category by default or descending by match count if --sort is passed as an argument.', ''
 		]
 
 $sanitize = true
@@ -115,9 +108,17 @@ ARGV.each do|a|
 		formattext.each{|line| puts line}
 		exit
 	elsif a[0] == '-' then
-		puts "Unknown option '"+a+"'"
+		STDERR.puts "Unknown option '"+a+"'"
 		exit
 	end
+end
+
+# Regex used to discard non-matching characters
+if RUBY_VERSION < '2.4' then
+	STDERR.puts '[Warning] You are running an old version of Ruby. Parsing files with non-english characters (Accents, Umlauts, Chinese characters, ...) might not produce useful results when not using --raw'
+	$inputalphabet = /[^A-Za-zöäüß]/ #[:word:] for word characters does not work in old Ruby versions, use english alphabet + german umlauts as a fallback
+else
+	$inputalphabet = Regex.new('[^[:word:]]') # discard all non-word characters
 end
 
 # Remove all options from ARGV
@@ -125,7 +126,7 @@ args = ARGV.select{ |a| (a[0] != 45 && a[0] != '-')} # 45 = "-", weird code to s
 
 # Validate and open input files
 if args == nil || args.length < 1 then
-	puts 'No dictionary specified. Try --help for help.'
+	STDERR.puts 'No dictionary specified. Try --help for help.'
 	exit
 elsif args.length == 1 then
 	dictpath = args[0]
@@ -137,18 +138,18 @@ elsif args.length == 2 then
 	if File.exists?(sample) && File.readable?(sample)
 		datafile = File.open(sample)
 	else
-		puts 'Input file does not exist or is not readable'
+		STDERR.puts 'Input file does not exist or is not readable'
 		exit
 	end
 else
-	puts 'Too many arguments'
+	STDERR.puts 'Too many arguments'
 	exit
 end	
 
 if File.exists?(dictpath) && File.readable?(dictpath)
 	dict = File.open(dictpath)
 else
-	puts 'Dictionary does not exist or is not readable'
+	STDERR.puts 'Dictionary does not exist or is not readable'
 	exit
 end
 
@@ -239,6 +240,8 @@ def generateOutput(data)
 
 	if $sort then
 		data.sort!{|a, b| b[1] <=> a[1]}
+	else
+		data.sort!{|a, b| a[0] <=> b[0]}
 	end
 
 	if $human then
