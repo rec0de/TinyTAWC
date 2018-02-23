@@ -32,7 +32,7 @@ if RUBY_VERSION < '2.4' then
 	STDERR.puts '[Warning] You are running an old version of Ruby. Parsing files with non-english characters (Accents, Umlauts, Chinese characters, ...) might not produce useful results when not using --raw'
 	$inputalphabet = /[^A-Za-zöäüß]/ #[:word:] for word characters does not work in old Ruby versions, use english alphabet + german umlauts as a fallback
 else
-	$inputalphabet = /[^[:word:]]/ # discard all non-word characters
+	$inputalphabet = Regex.new('[^[:word:]]') # discard all non-word characters
 end
 
 version = '1.3.2'
