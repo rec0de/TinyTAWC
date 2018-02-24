@@ -35,7 +35,7 @@ def error(msg, warn = false)
 	STDERR.puts (warn ? '[Warning] ' : '[Error] ') + msg
 end
 
-version = '1.3.5'
+version = '1.4.0'
 helptext = ['Usage:', 'ruby ttawc.rb [options] [dictionary] [input file]', 'If no input file is given, input data is read from STDIN', '',
 			'Options:',
 			'--raw (-r) Use raw input data with no sanitizing',
@@ -84,6 +84,7 @@ $excluderegex = nil
 $include = true
 $showmatching = false
 $maxcache = 10000 # Maximum number of cached words
+$linebased = false
 
 # Parse command line options
 ARGV.each do|a|
@@ -101,6 +102,8 @@ ARGV.each do|a|
 		$sort = true
 	elsif a == '-r' or a == '--raw' then
 		$sanitize = false
+	elsif a == '-l' or a == '--linebased' then
+		$linebased = true
 	elsif a =~ /^--include=/ then
 		$excluderules = true
 		$excluderegex = Regexp.new('\A('+a[10...a.length].gsub(',', '|')+')\Z')
@@ -197,8 +200,6 @@ def count(text)
 	cachehits = 0
 	words = ($sanitize ? text.gsub($inputalphabet, ' ').gsub(/[0-9]/, ' ') : text).gsub(/\s+/, ' ').split
 
-	words = words[0...17700]
-
 	log('Found ' + words.length.to_s + ' words')
 	log('Checking ' + numtohuman(words.length) + '*' + numtohuman($rulecount) + '=' + numtohuman(words.length * $rulecount) + ' rules, this may take a while')
 
@@ -280,6 +281,27 @@ def generateOutput(data)
 	return result;
 end
 
+# combineOutputs: array of (array of string, (array of string, number))
+# Combines the output created by generateOutput for multiple different texts
+def combineOutputs(data)
+	result = $json ? '{' : ''
+	data.each{|id|
+		if $human then
+			result += '---- ' + id[0] + " ----\n" + id[1]
+		elsif $json then
+			result += '"' + id[0] + '":' + id[1] + ','
+		else
+			result += '%' + id[0] + ' ' + id[1] + "\n"
+		end
+	}
+
+	if $json then
+		result[result.length-1] = '}'
+	end
+
+	return result;
+end
+
 lines = dict.readlines
 
 mode = 'parseWords'
@@ -333,7 +355,25 @@ end
 log('Parsed ' + $rulecount.to_s + ' word rules')
 log('Analyzing input file')
 
-result = generateOutput(count(datafile.read))
+if not $linebased then
+	result = generateOutput(count(datafile.read))
+else
+	lines = datafile.readlines
+	outputs = {}
+	ids = {}
+
+	lines.each{|l|
+		words = l.split
+		entry = (words.length > 1) ? words[1...words.length].join(' ') : nil
+		ids[words[0]] = ids[words[0]] ? (ids[words[0]] + ' ' + entry) : entry
+	}
+
+	for id in ids.to_a do
+		outputs[id[0]] = generateOutput(count(id[1]))
+	end
+	
+	result = combineOutputs(outputs.to_a)
+end
 
 puts 'count | category | category name (if present)' if $human
 puts result
