@@ -23,17 +23,26 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 =end
 
+# log: string -> nil
+# Logs a debug message to STDERR
 def log(msg)
 	STDERR.puts '[Debug] ' + msg if $debug
 end
 
-version = '1.3.4'
+# error: string (, bool) -> nil
+# Logs an error message to STDERR if no warn parameter is passed or a warning if warn is true
+def error(msg, warn = false)
+	STDERR.puts (warn ? '[Warning] ' : '[Error] ') + msg
+end
+
+version = '1.3.5'
 helptext = ['Usage:', 'ruby ttawc.rb [options] [dictionary] [input file]', 'If no input file is given, input data is read from STDIN', '',
 			'Options:',
 			'--raw (-r) Use raw input data with no sanitizing',
 			'--include="cat0,cat1,..." Include only the given categories',
 			'--exclude="cat0,cat1,..." Include everything except the given categories',
 			'--human Show human-readable output',
+			'--human Show JSON-formatted output',
 			'--percent (-p) Show output in percent of total words',
 			'--sort (-s) Sort output by count (desc)',
 			'--show-matching (-m) Show every word and the category it matches',
@@ -67,6 +76,7 @@ formattext = ['', 'tinyTAWC format help', '',
 $sanitize = true
 $debug = false
 $human = false
+$json = false
 $sort = false
 $percent = false
 $excluderules = false
@@ -81,10 +91,16 @@ ARGV.each do|a|
 		$debug = true
 	elsif a == '--human' then
 		$human = true
+	elsif a == '--json' then
+		$json = true
 	elsif a == '-p' or a == '--percent' then
 		$percent = true
 	elsif a == '-m' or a == '--show-matching' then
 		$showmatching = true
+	elsif a == '-s' or a == '--sort' then
+		$sort = true
+	elsif a == '-r' or a == '--raw' then
+		$sanitize = false
 	elsif a =~ /^--include=/ then
 		$excluderules = true
 		$excluderegex = Regexp.new('\A('+a[10...a.length].gsub(',', '|')+')\Z')
@@ -92,10 +108,6 @@ ARGV.each do|a|
 		$excluderules = true
 		$excluderegex = Regexp.new('\A('+a[10...a.length].gsub(',', '|')+')\Z')
 		$include = false
-	elsif a == '-s' or a == '--sort' then
-		$sort = true
-	elsif a == '-r' or a == '--raw' then
-		$sanitize = false
 	elsif a =~ /^--cachesize=/ then
 		$maxcache = a[12...a.length].to_i
 	elsif a == '-v' or a == '--version' then
@@ -108,17 +120,17 @@ ARGV.each do|a|
 		formattext.each{|line| puts line}
 		exit
 	elsif a[0] == '-' then
-		STDERR.puts "Unknown option '"+a+"'"
+		error('Unknown option \''+a+'\'')
 		exit
 	end
 end
 
 # Regex used to discard non-matching characters
-if RUBY_VERSION < '2.4' then
-	STDERR.puts '[Warning] You are running an old version of Ruby. Parsing files with non-english characters (Accents, Umlauts, Chinese characters, ...) might not produce useful results when not using --raw'
+if RUBY_VERSION < '2.3' then
+	error('[Warning] You are running an old version of Ruby. Parsing files with non-english characters (Accents, Umlauts, Chinese characters, ...) might not produce useful results when not using --raw', true)
 	$inputalphabet = /[^A-Za-zöäüß]/ #[:word:] for word characters does not work in old Ruby versions, use english alphabet + german umlauts as a fallback
 else
-	$inputalphabet = Regex.new('[^[:word:]]') # discard all non-word characters
+	$inputalphabet = Regexp.new('[^[:word:]]') # discard all non-word characters
 end
 
 # Remove all options from ARGV
@@ -126,7 +138,7 @@ args = ARGV.select{ |a| (a[0] != 45 && a[0] != '-')} # 45 = "-", weird code to s
 
 # Validate and open input files
 if args == nil || args.length < 1 then
-	STDERR.puts 'No dictionary specified. Try --help for help.'
+	error('No dictionary specified. Try --help for help.')
 	exit
 elsif args.length == 1 then
 	dictpath = args[0]
@@ -138,21 +150,23 @@ elsif args.length == 2 then
 	if File.exists?(sample) && File.readable?(sample)
 		datafile = File.open(sample)
 	else
-		STDERR.puts 'Input file does not exist or is not readable'
+		error('Input file does not exist or is not readable')
 		exit
 	end
 else
-	STDERR.puts 'Too many arguments'
+	error('Too many arguments')
 	exit
 end	
 
 if File.exists?(dictpath) && File.readable?(dictpath)
 	dict = File.open(dictpath)
 else
-	STDERR.puts 'Dictionary does not exist or is not readable'
+	error('Dictionary does not exist or is not readable')
 	exit
 end
 
+# numtohuman: number -> string
+# Converts a (big) number to a more human-readable representation (1000 -> 1.0k)
 def numtohuman(number)
 	if number < 1000
 		return number.to_s
@@ -163,6 +177,10 @@ def numtohuman(number)
 	end
 end
 
+# parseRegex: string -> regexp
+# Parses a string as a regular expression. If the string is not surrounded by slashes,
+# 	the string is interpreted as a literal match with * as a wildcard equivalent to .*
+# 	Otherwise, the string is parsed as a normal regular expression delimited by forward slashes
 def parseRegex(string)
 	if string =~ /^\/.*\/$/ then
 		return Regexp.new(string[1...string.length-1])
@@ -171,11 +189,15 @@ def parseRegex(string)
 	end
 end
 
+# count: string -> array of (array of string, number)
+# Counts how many words in the input match which category
 def count(text)
 	result = {}
 	cache = {}
 	cachehits = 0
 	words = ($sanitize ? text.gsub($inputalphabet, ' ').gsub(/[0-9]/, ' ') : text).gsub(/\s+/, ' ').split
+
+	words = words[0...17700]
 
 	log('Found ' + words.length.to_s + ' words')
 	log('Checking ' + numtohuman(words.length) + '*' + numtohuman($rulecount) + '=' + numtohuman(words.length * $rulecount) + ' rules, this may take a while')
@@ -234,8 +256,9 @@ def count(text)
 	return result
 end
 
+# generateOutput: array of (array of string, number) -> string
+# Converts [category, count] data to a human- or machine-readable format
 def generateOutput(data)
-
 	result = ''
 
 	if $sort then
@@ -246,6 +269,10 @@ def generateOutput(data)
 
 	if $human then
 		data.each { |elem| result += (elem[1] ? elem[1].to_s : '0') + ' ' + elem[0] + ($categories[elem[0]] ? ' ('+$categories[elem[0]]+')' : '') + "\n"}
+	elsif $json then
+		result = '{'
+		data.each { |elem| result += '"' + elem[0] + '":' + (elem[1] ? elem[1].to_s : '0') + ','}
+		result[result.length-1] = '}'
 	else
 		data.each { |elem| result += elem[0] + ':' + (elem[1] ? elem[1].to_s : '0') + ' '}
 	end
