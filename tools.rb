@@ -20,15 +20,27 @@ def sanitize(text)
 	return text.gsub(inputalphabet, ' ').gsub(/[0-9]/, ' ').gsub(/\s+/, ' ')
 end
 
+def sanitize_lines(lines)
+	# Regex used to discard non-matching characters
+	if RUBY_VERSION < '2.3' then
+		error('[Warning] You are running an old version of Ruby. Parsing files with non-english characters (Accents, Umlauts, Chinese characters, ...) might not produce useful results when not using --raw', true)
+		inputalphabet = /[^A-Za-zöäüß]/ #[:word:] for word characters does not work in old Ruby versions, use english alphabet + german umlauts as a fallback
+	else
+		inputalphabet = Regexp.new('[^[:word:]]') # discard all non-word characters
+	end
+		
+	return lines.map{|line| line.gsub(inputalphabet, ' ').gsub(/[0-9]/, ' ').gsub(/\s+/, ' ')}
+end
+
 def clean()
 	# Remove all options from ARGV
 	args = ARGV.select{ |a| (a[0] != 45 && a[0] != '-')} # 45 = "-", weird code to support Ruby 1.8.7
 
 	if args.length == 1 then
-		data = STDIN.read()
+		data = STDIN.readlines()
 	elsif args.length == 2 then
 		if File.exists?(args[1]) && File.readable?(args[1])
-			data = File.read(args[1])
+			data = File.readlines(args[1])
 		else
 			error('Input file does not exist or is not readable')
 			exit
@@ -38,7 +50,7 @@ def clean()
 		exit
 	end
 
-	return sanitize(data)
+	return $keeplines ? sanitize_lines(data) : sanitize(data.join(' '))
 end
 
 def combine()
@@ -72,19 +84,14 @@ helptext = ['Usage:', 'ruby tools.rb [options] [mode] [input file/s]', 'If no in
 		]
 
 $debug = false
+$keeplines = false
 
 # Parse command line options
 ARGV.each do|a|
 	if a == '-d' or a == '--verbose' then
 		$debug = true
-	elsif a == '--human' then
-		$human = true
-	elsif a == '-p' or a == '--percent' then
-		$percent = true
-	elsif a == '-s' or a == '--sort' then
-		$sort = true
-	elsif a == '-r' or a == '--raw' then
-		$sanitize = false
+	elsif a == '--keeplines' then
+		$keeplines = true
 	elsif a == '-h' or a == '--help' then
 		helptext.each{|line| puts line}
 		exit

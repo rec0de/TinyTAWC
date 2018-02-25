@@ -370,8 +370,10 @@ else
 
 	lines.each{|l|
 		words = l.split
-		entry = (words.length > 1) ? words[1...words.length].join(' ') : nil
-		ids[words[0]] = ids[words[0]] ? (ids[words[0]] + ' ' + entry) : entry
+		if words.length > 1 then
+			entry = words[1...words.length].join(' ') 
+			ids[words[0]] = ids[words[0]] ? (ids[words[0]] + ' ' + entry) : entry
+		end
 	}
 
 	for id in ids.to_a do
