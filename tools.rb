@@ -5,13 +5,13 @@ def log(msg)
 end
 
 def error(msg, warn = false)
-	STDERR.puts (warn ? '[Warning] ' : '[Error] ') + msg
+	STDERR.puts( (warn ? '[Warning] ' : '[Error] ') + msg)
 end
 
 def sanitize(text)
 	# Regex used to discard non-matching characters
 	if RUBY_VERSION < '2.3' then
-		error('[Warning] You are running an old version of Ruby. Parsing files with non-english characters (Accents, Umlauts, Chinese characters, ...) might not produce useful results when not using --raw', true)
+		error('You are running an old version of Ruby. Parsing files with non-english characters (Accents, Umlauts, Chinese characters, ...) might not produce useful results when not using --raw', true)
 		inputalphabet = /[^A-Za-zöäüß]/ #[:word:] for word characters does not work in old Ruby versions, use english alphabet + german umlauts as a fallback
 	else
 		inputalphabet = Regexp.new('[^[:word:]]') # discard all non-word characters
@@ -23,7 +23,7 @@ end
 def sanitize_lines(lines)
 	# Regex used to discard non-matching characters
 	if RUBY_VERSION < '2.3' then
-		error('[Warning] You are running an old version of Ruby. Parsing files with non-english characters (Accents, Umlauts, Chinese characters, ...) might not produce useful results when not using --raw', true)
+		error('You are running an old version of Ruby. Parsing files with non-english characters (Accents, Umlauts, Chinese characters, ...) might not produce useful results when not using --raw', true)
 		inputalphabet = /[^A-Za-zöäüß]/ #[:word:] for word characters does not work in old Ruby versions, use english alphabet + german umlauts as a fallback
 	else
 		inputalphabet = Regexp.new('[^[:word:]]') # discard all non-word characters
@@ -78,6 +78,7 @@ helptext = ['Usage:', 'ruby tools.rb [options] [mode] [input file/s]', 'If no in
 			'combine Combine the given input files into a line-based one (Does not support STDIN)',
 			'',
 			'Options:',
+			'--keeplines Keep linebreaks when cleaning',
 			'--verbose (-d) Show debug information',
 			'--help (-h) Show this help and exit',
 			''
