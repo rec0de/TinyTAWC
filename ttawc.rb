@@ -35,7 +35,7 @@ def error(msg, warn = false)
 	STDERR.puts (warn ? '[Warning] ' : '[Error] ') + msg
 end
 
-version = '1.4.0'
+version = '1.4.1'
 helptext = ['Usage:', 'ruby ttawc.rb [options] [dictionary] [input file]', 'If no input file is given, input data is read from STDIN', '',
 			'Options:',
 			'--raw (-r) Use raw input data with no sanitizing',
@@ -192,7 +192,15 @@ end
 # 	Otherwise, the string is parsed as a normal regular expression delimited by forward slashes
 def parseRegex(string)
 	if string =~ /^\/.*\/$/ then
-		return Regexp.new(string[1...string.length-1])
+		opt = nil
+		string.gsub(/.*\//, '').split('').each{|c|
+			if c == 'i' or c == 'x' then
+				toadd = (c == 'i') ? Regexp::IGNORECASE : Regexp::EXDENDED
+				opt = opt ? opt | toadd : toadd
+			end
+		}
+
+		return Regexp.new(string[1...string.length-1], opt)
 	else
 		return Regexp.new('^'+string.gsub(/\*/, '.*')+'$', Regexp::IGNORECASE)
 	end
@@ -202,7 +210,6 @@ end
 # Counts how many words in the input match which category
 def count(text)
 	result = {}
-	cache = {}
 	cachehits = 0
 	words = ($sanitize ? text.gsub($inputalphabet, ' ').gsub(/[0-9]/, ' ') : text).gsub(/\s+/, ' ').split
 
@@ -216,15 +223,15 @@ def count(text)
 		end
 
 		# Remove one element from cache if cache is full
-		if cache.length >= $maxcache then
-			cache.shift
+		if $cache.length >= $maxcache then
+			$cache.shift
 		end
 
 		# Shortcut if word is in cache
-		if cache[word] then
+		if $cache[word] then
 			cachehits += 1
 			# Increment every matching category
-			cache[word].each{|cat|
+			$cache[word].each{|cat|
 				puts word + ' matches ' + cat if $showmatching
 				result[cat] = result[cat] ? result[cat]+1 : 1
 			}
@@ -232,13 +239,13 @@ def count(text)
 		end
 
 		# Test rules until a matching one is found
-		cache[word] = [] # Assume no rule matches the word and cache that. If a rule does match, the cache is overwritten
+		$cache[word] = [] # Assume no rule matches the word and cache that. If a rule does match, the cache is overwritten
 		for rule in $regexes do
 			if word =~ rule[:regex] then
-				cache[word] = rule[:categories] # Save word categories in cache
+				$cache[word] = rule[:categories] # Save word categories in cache
 				# Increment every matching category
 				for category in rule[:categories] do
-					puts word + ' matches ' + category if $showmatching
+					puts word + ' ~= ' + category if $showmatching
 					if result[category] then
 						result[category] += 1
 					else
@@ -258,8 +265,7 @@ def count(text)
 
 	result.push(['total', words.length])
 
-	log('Cached words: '+cachehits.to_s+'/'+words.length.to_s)
-	log('Done')
+	log('Done - Cached: ' + (((cachehits.to_f / words.length)*1000).round.to_f / 10).to_s + '%')
 	return result
 end
 
@@ -315,6 +321,7 @@ $categories = {}
 $regexes = []
 $catcount = 0
 $rulecount = 0
+$cache = {}
 
 log('Starting')
 log('Dict file: "'+dictpath+'"')
@@ -368,6 +375,7 @@ else
 	outputs = {}
 	ids = {}
 
+	log('Grouping ' + numtohuman(lines.length) + ' lines by id, this may take a while')
 	lines.each{|l|
 		words = l.split
 		if words.length > 1 then
@@ -377,6 +385,7 @@ else
 	}
 
 	for id in ids.to_a do
+		log('Processing id "' + id[0] + '"')
 		outputs[id[0]] = generateOutput(count(id[1]))
 	end
 	
