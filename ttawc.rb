@@ -32,7 +32,7 @@ end
 # error: string (, bool) -> nil
 # Logs an error message to STDERR if no warn parameter is passed or a warning if warn is true
 def error(msg, warn = false)
-	STDERR.puts (warn ? '[Warning] ' : '[Error] ') + msg
+	STDERR.puts((warn ? '[Warning] ' : '[Error] ') + msg)
 end
 
 version = '1.4.1'
