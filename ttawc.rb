@@ -35,16 +35,24 @@ def error(msg, warn = false)
 	STDERR.puts((warn ? '[Warning] ' : '[Error] ') + msg)
 end
 
-version = '1.4.1'
+# round: float, integer -> float
+# rounds to x significant digits - doesn't round for digits < 0
+def round(num, digits)
+	return num if digits < 0
+
+	return ((num*(10**digits)).round).to_f / 10**digits
+end
+version = '1.4.2'
 helptext = ['Usage:', 'ruby ttawc.rb [options] [dictionary] [input file]', 'If no input file is given, input data is read from STDIN', '',
 			'Options:',
 			'--raw (-r) Use raw input data with no sanitizing',
 			'--linebased (-l) Treat lines in the input as potentially separate datasets. See --format',
 			'--include="cat0,cat1,..." Include only the given categories',
 			'--exclude="cat0,cat1,..." Include everything except the given categories',
-			'--human Show human-readable output',
+			'--human Show human-readable output (implies round=4 by default)',
 			'--json Show JSON-formatted output',
 			'--percent (-p) Show output in percent of total words',
+			'--round=n Round percent values to n significant digits',
 			'--sort (-s) Sort output by count (desc)',
 			'--show-matching (-m) Show every word and the category it matches',
 			'--verbose (-d) Show debug information',
@@ -72,7 +80,7 @@ formattext = ['', 'tinyTAWC format help', '',
 			'',
 			'OUTPUT DATA',
 			'If --human is passed as an argument, TinyTAWC outputs a header row explaining the column values and one row for each category that matched at least one word.',
-			'Row entries are separated by a single space character.',
+			'Row entries are separated by a single space character. Note that human readable percentages are rounded to 4 significant digits by default.',
 			'If --json is passed, output is formatted as a JSON hashmap containing the categories as keys or, in line-based mode, a hashmap containing the IDs as keys and the regular output hashmap as a value.',
 			'In the default machine-readable mode, TinyTAWC output has the format "cat0:count0 cat1:count1 ..." where catn is the n-th category code and countn is the wordcount or percentage matching this category.',
 			'In line-based mode, every line of output corresponds to one id (format: "%id cat0:count0 ...").',
@@ -91,6 +99,7 @@ $include = true
 $showmatching = false
 $maxcache = 10000 # Maximum number of cached words
 $linebased = false
+$round = -1 # Default to no rounding
 
 # Parse command line options
 ARGV.each do|a|
@@ -98,10 +107,13 @@ ARGV.each do|a|
 		$debug = true
 	elsif a == '--human' then
 		$human = true
+		$round = $round > -1 ? $round : 4 # Human mode implies some rounding if not otherwise specified
 	elsif a == '--json' then
 		$json = true
 	elsif a == '-p' or a == '--percent' then
 		$percent = true
+	elsif a =~ /^--round=/ then
+		$round = a[8..-1].to_i
 	elsif a == '-m' or a == '--show-matching' then
 		$showmatching = true
 	elsif a == '-s' or a == '--sort' then
@@ -260,7 +272,7 @@ def count(text)
 	result = result.to_a
 
 	if $percent then
-		result = result.map { |e| [e[0], (e[1].to_f / words.length)*100] }
+		result = result.map { |e| [e[0], round((e[1].to_f / words.length)*100, $round)] }
 	end
 
 	result.push(['total', words.length])
@@ -281,7 +293,7 @@ def generateOutput(data)
 	end
 
 	if $human then
-		data.each { |elem| result += (elem[1] ? elem[1].to_s : '0') + ' ' + elem[0] + ($categories[elem[0]] ? ' ('+$categories[elem[0]]+')' : '') + "\n"}
+		data.each { |elem| result += (elem[1] ? elem[1].to_s : '0') + ($percent ? '% ' : ' ') + elem[0] + ($categories[elem[0]] ? ' ('+$categories[elem[0]]+')' : '') + "\n"}
 	elsif $json then
 		result = '{'
 		data.each { |elem| result += '"' + elem[0] + '":' + (elem[1] ? elem[1].to_s : '0') + ','}
