@@ -244,7 +244,7 @@ def count(text)
 			cachehits += 1
 			# Increment every matching category
 			$cache[word].each{|cat|
-				puts word + ' matches ' + cat if $showmatching
+				puts word + ' ~= ' + cat if $showmatching
 				result[cat] = result[cat] ? result[cat]+1 : 1
 			}
 			next
