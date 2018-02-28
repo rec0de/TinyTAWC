@@ -98,9 +98,11 @@ def compare()
 	end
 
 	parsed = []
-	relativewarn = false
+	relativewarn = false # Only warn once when detecting relative input data
 
 	data.each{|line|
+
+		# Every line should start with %id indicating a TTAWC output line
 		if line[0] != '%' then
 			error('Input file seems corrupted - compare expects TTAWC default format output in separate lines')
 			exit
@@ -108,12 +110,16 @@ def compare()
 
 		temp = {}
 		parts = line.split
-		temp['ttawc-id'] = parts[0][1..-1]
+		temp['ttawc-id'] = parts[0][1..-1] # Save the id name
+		# Build a hashmap of the current input line
 		parts[1..-1].each{|part|
 			subparts = part.split(':')
+
+			# If the key data is non-integer, compare is most likely being used on percentage data
+			# (which is bad)
 			if subparts[1].to_f != subparts[1].to_i and not relativewarn then
-				error('It seems the input data is in percent. Comparing most likely won\'t work', true)
-				relativewarn = true
+				error('It seems the input data is in percent. Comparing most likely won\'t work (and will produce inaccurate data)', true)
+				relativewarn = true # Don't warn again
 			end
 			temp[subparts[0]] = subparts[1].to_f
 		}
@@ -126,6 +132,7 @@ def compare()
 	for id in parsed[1..-1] do
 		temp = {}
 		catname = nil
+		# Build a new hashmap containing differences and confidence values 
 		id.each{|cat, value|
 			if cat == 'ttawc-id' then
 				catname = value
@@ -133,12 +140,18 @@ def compare()
 				master[cat] = (master[cat] ? master[cat] : 0)
 				cat_total = value + master[cat]
 				total_total = master['total'] + id['total']
+
+				# Calculate expected values based on average distribution
 				expected_id = (cat_total.to_f / total_total) * id['total']
 				expected_master = (cat_total.to_f / total_total) * master['total']
+
+				# Disclaimer: I know nothing about statistics and chi² tests
+				# chi² = sum((observedValue - expectedValue)^2 / observedValue)
 				chisquare = ((value-expected_id)**2)/value + ((master[cat]-expected_master)**2)/master[cat]
 				chisquare += (((id['total']-value)-(id['total']-expected_id))**2)/(id['total'] - value)
 				chisquare += (((master['total']-master[cat])-(master['total']-expected_master))**2)/(master['total'] - master[cat])
 
+				# Separate values for PercentagePoint and Percent mode
 				pp_diff = (cat == 'total') ? (value - master[cat]) : ((value/id['total']) - (master[cat]/master['total']))*100
 				percent_diff = (cat == 'total') ? ((value - master[cat])/master[cat])*100 : (((value/id['total']) - (master[cat]/master['total']))/(master[cat]/master['total']))*100
 
