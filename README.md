@@ -44,9 +44,10 @@ Option|Description
 `--linebased (-l)`|Treat lines in the input as separate datasets - see Input Data
 `--include="cat0,cat1,..."`|Include only the given categories
 `--exclude="cat0,cat1,..."`|Include everything except the given categories
-`--human`|Show human-readable output
+`--human`|Show human-readable output (implies round=4)
 `--json`|Show JSON-encoded output
 `--percent (-p)`|Show output in percent of total words
+`--round=n`|Round percentage values to n digits
 `--sort (-s)`|Sort output by match count (descending)
 `--show-matching (-m)`|Include every word and the category it matches in output
 `--verbose (-d)`|Show debug information on STDERR
@@ -56,3 +57,28 @@ Option|Description
 `--format`|Show input and dict format help
 
 (For similar and perhaps more up-to-date info, use the `--help` option)
+
+## Tools
+TinyTAWC comes with a separate utility script called `tools.rb` to help with preparing and analyzing data.
+
+### Cleaning
+`ruby tools.rb clean [input file]` Reads the input file (or STDIN if no file is given) and performs the same cleaning that TinyTAWC would perform on input data in default mode. This creates single-line output without special characters and with normalized whitespace.  
+If `--keeplines` is passed, linebreaks are not replaced.
+
+### Combining
+`ruby tools.rb combine [files]` Combines all input files into an output that can be processed by TinyTAWC in line-based mode. This includes cleaning and reducing the input to a single line. The filename is used as the dataset ID.
+
+### Comparing
+`ruby tools.rb compare [file]` Takes default-formatted TinyTAWC output (`%datasetID cat0:count0 ...`) and compares the dataset in the first line of the input file to every other line. Differences are calculated in percent point by default or percentage change if `--percent` is passed. This requires absolute - not relative - input data and exactly one dataset per line.  
+If no input file is given, data is read from STDIN (which makes things like `ruby ttawc.rb -l dict.dic input | ruby tools.rb compare` possible).  
+In addition to calculating differences between the datasets, the compare script performs a two-dimensional χ² test estimating the statistical significance of observed differences (χ² > 3.84 implies that the difference is significant on a p < 0.05 level).  
+**Note that this may or may not be the correct way to test for significance in your usecase** - always double-check your results.
+
+### Options
+Option|Description
+---|---
+`--keeplines`|Keep linebreaks when cleaning (clean only)
+`--percent (-p)`|Show differences in percent instead of percentage points (compare only)
+`--round=n`|Round percentage values to n digits (compare only)
+`--verbose (-d)`|Show debug information on STDERR
+`--help (-h)`|Show help and exit

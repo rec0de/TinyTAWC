@@ -42,7 +42,7 @@ def round(num, digits)
 
 	return ((num*(10**digits)).round).to_f / 10**digits
 end
-version = '1.4.2'
+version = '1.4.3'
 helptext = ['Usage:', 'ruby ttawc.rb [options] [dictionary] [input file]', 'If no input file is given, input data is read from STDIN', '',
 			'Options:',
 			'--raw (-r) Use raw input data with no sanitizing',
@@ -203,18 +203,21 @@ end
 # 	the string is interpreted as a literal match with * as a wildcard equivalent to .*
 # 	Otherwise, the string is parsed as a normal regular expression delimited by forward slashes
 def parseRegex(string)
-	if string =~ /^\/.*\/$/ then
+	if string =~ /^\/.*\// then
+		log(string)
 		opt = nil
 		string.gsub(/.*\//, '').split('').each{|c|
 			if c == 'i' or c == 'x' then
-				toadd = (c == 'i') ? Regexp::IGNORECASE : Regexp::EXDENDED
+				toadd = (c == 'i') ? Regexp::IGNORECASE : Regexp::EXTENDED
 				opt = opt ? opt | toadd : toadd
 			end
 		}
 
-		return Regexp.new(string[1...string.length-1], opt)
+		string.gsub!(/\/[a-z]*\Z/, '') # Remove trailing options and slash
+
+		return Regexp.new(string[1..-1], opt)
 	else
-		return Regexp.new('^'+string.gsub(/\*/, '.*')+'$', Regexp::IGNORECASE)
+		return Regexp.new('\A'+string.gsub(/\*/, '.*')+'\Z', Regexp::IGNORECASE)
 	end
 end
 
