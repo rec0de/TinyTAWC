@@ -147,9 +147,9 @@ def compare()
 
 				# Disclaimer: I know nothing about statistics and chi² tests
 				# chi² = sum((observedValue - expectedValue)^2 / observedValue)
-				chisquare = ((value-expected_id)**2)/value + ((master[cat]-expected_master)**2)/master[cat]
-				chisquare += (((id['total']-value)-(id['total']-expected_id))**2)/(id['total'] - value)
-				chisquare += (((master['total']-master[cat])-(master['total']-expected_master))**2)/(master['total'] - master[cat])
+				chisquare = ((value-expected_id)**2)/expected_id + ((master[cat]-expected_master)**2)/expected_master
+				chisquare += (((id['total']-value)-(id['total']-expected_id))**2)/(id['total']-expected_id)
+				chisquare += (((master['total']-master[cat])-(master['total']-expected_master))**2)/(master['total'] - expected_master)
 
 				# Separate values for PercentagePoint and Percent mode
 				pp_diff = (cat == 'total') ? (value - master[cat]) : ((value/id['total']) - (master[cat]/master['total']))*100
