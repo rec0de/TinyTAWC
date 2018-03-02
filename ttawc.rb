@@ -148,7 +148,7 @@ end
 
 # Regex used to discard non-matching characters
 if RUBY_VERSION < '2.3' then
-	error('[Warning] You are running an old version of Ruby. Parsing files with non-english characters (Accents, Umlauts, Chinese characters, ...) might not produce useful results when not using --raw', true)
+	error('You are running an old version of Ruby. Parsing files with non-english characters (Accents, Umlauts, Chinese characters, ...) might not produce useful results when not using --raw', true)
 	$inputalphabet = /[^A-Za-zöäüß]/ #[:word:] for word characters does not work in old Ruby versions, use english alphabet + german umlauts as a fallback
 else
 	$inputalphabet = Regexp.new('[^[:word:]]') # discard all non-word characters
@@ -204,7 +204,6 @@ end
 # 	Otherwise, the string is parsed as a normal regular expression delimited by forward slashes
 def parseRegex(string)
 	if string =~ /^\/.*\// then
-		log(string)
 		opt = nil
 		string.gsub(/.*\//, '').split('').each{|c|
 			if c == 'i' or c == 'x' then
