@@ -103,7 +103,7 @@ def compare()
 	data.each{|line|
 
 		# Every line should start with %id indicating a TTAWC output line
-		if line[0] != '%' then
+		if (line[0] != '%' && line[0] != 37) then # 37 = % in ruby 1.8.7
 			error('Input file seems corrupted - compare expects TTAWC default format output in separate lines')
 			exit
 		end
@@ -131,11 +131,11 @@ def compare()
 
 	for id in parsed[1..-1] do
 		temp = {}
-		catname = nil
+		idname = nil
 		# Build a new hashmap containing differences and confidence values 
 		id.each{|cat, value|
 			if cat == 'ttawc-id' then
-				catname = value
+				idname = value
 			else
 				master[cat] = (master[cat] ? master[cat] : 0)
 				cat_total = value + master[cat]
@@ -157,8 +157,9 @@ def compare()
 
 				temp[cat] = {:diff => ($percent ? percent_diff : pp_diff), :confidence => (cat == 'total' ? 0 : chisquare)}
 			end
-			diff[catname] = temp
 		}
+
+		diff[idname] = temp
 	end
 
 	puts 'Comparing ' + (parsed.length - 1).to_s + ' datasets to master "' + master['ttawc-id'] + '"'
@@ -168,8 +169,8 @@ def compare()
 		puts '"' + key + '": ' + (key == 'total' ? value.to_s : round((value/master['total'])*100, $round).to_s + '%')
 	}
 
-	diff.each{|name, comparison|
-		puts '---- ' + name + ' ----'
+	diff.each{|dataname, comparison|
+		puts '---- ' + dataname + ' ----'
 		comparison.each{|key, value|
 			next if key == 'ttawc-id'
 			change = (value[:diff] > 0 ? '+' : '') + round(value[:diff], $round).to_s + ($percent ? '%' : key == 'total' ? '' : 'pp')
