@@ -42,7 +42,7 @@ def round(num, digits)
 
 	return ((num*(10**digits)).round).to_f / 10**digits
 end
-version = '1.4.3'
+version = '1.4.4'
 helptext = ['Usage:', 'ruby ttawc.rb [options] [dictionary] [input file]', 'If no input file is given, input data is read from STDIN', '',
 			'Options:',
 			'--raw (-r) Use raw input data with no sanitizing',
@@ -147,7 +147,7 @@ ARGV.each do|a|
 end
 
 # Regex used to discard non-matching characters
-if RUBY_VERSION < '2.3' then
+if RUBY_VERSION < '2.0' then
 	error('You are running an old version of Ruby. Parsing files with non-english characters (Accents, Umlauts, Chinese characters, ...) might not produce useful results when not using --raw', true)
 	$inputalphabet = /[^A-Za-zöäüß]/ #[:word:] for word characters does not work in old Ruby versions, use english alphabet + german umlauts as a fallback
 else
@@ -238,12 +238,16 @@ def count(text)
 
 		# Remove one element from cache if cache is full
 		if $cache.length >= $maxcache then
-			$cache.shift
+			$cache.delete_if{|key, value| (not $cache_performance[key]) || $cache_performance[key] < $cache_minhits} # Delete every cache entry that has not been used often enough
+			if $cache.length >= ($maxcache - $maxcache * 0.3) then # If less than 30% of cache entries have been removed, increment threshold for keeping values in cache
+				$cache_minhits += 1
+			end
 		end
 
 		# Shortcut if word is in cache
 		if $cache[word] then
 			cachehits += 1
+			$cache_performance[word] = $cache_performance[word] ? $cache_performance[word] + 1 : 1
 			# Increment every matching category
 			$cache[word].each{|cat|
 				puts word + ' ~= ' + cat if $showmatching
@@ -336,6 +340,8 @@ $regexes = []
 $catcount = 0
 $rulecount = 0
 $cache = {}
+$cache_performance = {}
+$cache_minhits = 1
 
 log('Starting')
 log('Dict file: "'+dictpath+'"')
