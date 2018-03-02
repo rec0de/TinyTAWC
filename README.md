@@ -11,7 +11,7 @@ To run the script and display usage help, open a terminal and run `ruby [locatio
 Dict file format should be compatible with LIWC dict format.
 Every line of the dict file specifies a case-insensitive word rule with * as a wildcard for arbitrary characters.
 Alternatively, word rules can be specified as complete regular expressions
-(Ruby syntax, no whitespace, e.g. `/wor(l)?d/` - modifiers like i, s or U can currently not be used).
+(Ruby syntax, no whitespace, e.g. `/wor(l)?d/` - modifiers i and x are supported but considered experimental).
 Word rules are followed by the categories they belong to, separated by a single tab character (or other whitespace).
 Trailing whitespace is ignored.
 Lines starting with a % are treated as single-line comments. Lines containing only a % start or end a multi-line comment block.  
