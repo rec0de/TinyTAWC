@@ -42,7 +42,7 @@ def round(num, digits)
 
 	return ((num*(10**digits)).round).to_f / 10**digits
 end
-version = '1.4.4'
+version = '1.4.5'
 helptext = ['Usage:', 'ruby ttawc.rb [options] [dictionary] [input file]', 'If no input file is given, input data is read from STDIN', '',
 			'Options:',
 			'--raw (-r) Use raw input data with no sanitizing',
@@ -299,7 +299,7 @@ def generateOutput(data)
 	end
 
 	if $human then
-		data.each { |elem| result += (elem[1] ? elem[1].to_s : '0') + ($percent ? '% ' : ' ') + elem[0] + ($categories[elem[0]] ? ' ('+$categories[elem[0]]+')' : '') + "\n"}
+		data.each { |elem| result += (elem[1] ? elem[1].to_s : '0') + (($percent && elem[0] != 'total') ? '% ' : ' ') + elem[0] + ($categories[elem[0]] ? ' ('+$categories[elem[0]]+')' : '') + "\n"}
 	elsif $json then
 		result = '{'
 		data.each { |elem| result += '"' + elem[0] + '":' + (elem[1] ? elem[1].to_s : '0') + ','}
