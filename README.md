@@ -1,5 +1,5 @@
 # TinyTAWC
-A simple script for text analysis using LIWC-compatible dictionaries
+A simple script for text analysis using LIWC-compatible dictionaries. See [rec0de.net/open/tinytawc](https://rec0de.net/open/tinytawc)
 
 ## Running TinyTAWC
 Everything you need to run TinyTAWC is the ttawc.rb script and a version of Ruby installed on your computer.
@@ -82,3 +82,7 @@ Option|Description
 `--round=n`|Round percentage values to n digits (compare only)
 `--verbose (-d)`|Show debug information on STDERR
 `--help (-h)`|Show help and exit
+
+## Further Information
+For a more in-depth usage example, see [rec0de.net/open/tinytawc](https://rec0de.net/open/tinytawc).  
+Should you have any questions or difficulties, feel free to open a new issue or contact me at mail@rec0de.net
