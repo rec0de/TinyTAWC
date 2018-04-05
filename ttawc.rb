@@ -38,7 +38,7 @@ end
 # round: float, integer -> float
 # rounds to x significant digits - doesn't round for digits < 0
 def round(num, digits)
-	return num if (digits < 0 || num == Float::INFINITY)
+	return num if (digits < 0 || num.abs == Float::INFINITY)
 
 	return ((num*(10**digits)).round).to_f / 10**digits
 end
